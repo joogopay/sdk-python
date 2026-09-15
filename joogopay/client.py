@@ -51,6 +51,17 @@ def _decode_key(value: str, sizes: tuple[int, ...], what: str) -> bytes:
     return raw
 
 
+def _validated_write(key, builder):
+    """Rejecting a malformed idempotency key is a pre-send failure like any other
+    build failure, so it runs inside _build and surfaces as RequestError."""
+
+    def call(**kwargs):
+        p.validate_idempotency_key(key)
+        return builder(**kwargs)
+
+    return call
+
+
 def _build(builder):
     """Sealing and signing happen before the request is sent, so a protocol failure
     there is a request error rather than an unknown outcome."""
@@ -95,6 +106,23 @@ class Client:
         max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
         _now: Any = None,  # clock injection for tests
     ) -> None:
+        """base_url is scheme and host only, https; a path is rejected because the
+        SDK appends the endpoint path itself.
+
+        merchant_private_key_base64 takes either form of Ed25519 private key: the
+        32-byte seed libsodium and OpenSSL hand out, or the 64-byte seed plus
+        public key.
+
+        platform_body_key_id names which platform key seals the request body and
+        travels in the envelope so the gateway knows which private key opens it;
+        it must name the key given in platform_body_public_key_base64, which is
+        X25519, not the Ed25519 webhook key.
+
+        platform_webhook_public_keys maps key id to platform Ed25519 public key
+        and verifies webhook signatures, the opposite direction. The webhook names
+        its key id, so this holds every key the platform may currently sign with;
+        during a rotation that is two. Required even without webhooks.
+        """
         base_url = (base_url or "").strip()
         if not base_url:
             raise ConfigError("sdk: base_url is required")
@@ -286,8 +314,7 @@ class Client:
 
     def _write(self, path: str, body: dict[str, Any], idempotency_key: str | None) -> Any:
         key = (idempotency_key or p.new_nonce()).strip()
-        p.validate_idempotency_key(key)
-        built = _build(rq.build_write)(
+        built = _build(_validated_write(key, rq.build_write))(
             endpoint_url=self._base_url + path,
             access_key=self._access_key,
             idempotency_key=key,

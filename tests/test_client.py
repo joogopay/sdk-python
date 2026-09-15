@@ -90,6 +90,20 @@ def client(server, monkeypatch):
     )
 
 
+def test_malformed_idempotency_key_is_request_error(client):
+    """Rejecting the key happens before anything is sent, so it must land in the
+    same class as any other pre-send failure; a merchant reading TransportError
+    here would query an order that was never created."""
+    CAPTURED.clear()
+    with pytest.raises(sdk.RequestError):
+        client.create_payment(sdk.CreatePaymentReq(
+            merchantOrderNo="M1", currency="BRL", amount="1.00",
+            paymentMethod={"code": "PIX", "pix": {"payerName": "X"}},
+            webhookUrl="https://merchant.example/webhook",
+        ), idempotency_key="my-key-123")
+    assert CAPTURED == {}
+
+
 def test_unencodable_request_body_is_request_error(client):
     with pytest.raises(sdk.RequestError) as info:
         client.create_payment(sdk.CreatePaymentReq(
@@ -552,6 +566,36 @@ def test_validate_payout_conditional_required(client):
         "inIfsc": {"account": "123456789", "ifsc": "HDFC0001234",
                    "name": "Mary", "email": "m@example.com", "mobile": "9871476369"},
     }))
+
+
+IDR_WALLET_PAYOUTS = [
+    ("ID_DANA", "idDana", "DANA"), ("ID_OVO", "idOvo", "OVO"), ("ID_GOPAY", "idGopay", "GOPAY"),
+    ("ID_LINKAJA", "idLinkaja", "LINKAJA"), ("ID_SHOPEEPAY", "idShopeepay", "SHOPEEPAY"),
+]
+
+
+def idr_wallet_payout(method):
+    return sdk.CreatePayoutReq(
+        merchantOrderNo="M1", currency="IDR", amount="10000",
+        payoutMethod=method, webhookUrl="https://m.example.com/w",
+    )
+
+
+def idr_wallet_extra(wallet):
+    return {"bankCode": wallet, "accountName": "Budi", "email": "b@example.com", "mobile": "081234567890"}
+
+
+@pytest.mark.parametrize("code,field,wallet", IDR_WALLET_PAYOUTS)
+def test_validate_payout_idr_wallets_accepted(client, code, field, wallet):
+    """The five IDR wallet payouts are accepted under their own extra field."""
+    NEXT_RESPONSE.clear()
+    client.create_payout(idr_wallet_payout({"code": code, field: idr_wallet_extra(wallet)}))
+
+
+def test_validate_payout_idr_wallet_extra_must_match_code(client):
+    NEXT_RESPONSE.clear()
+    with pytest.raises(sdk.RequestError, match="does not match code"):
+        client.create_payout(idr_wallet_payout({"code": "ID_DANA", "idOvo": idr_wallet_extra("OVO")}))
 
 
 TESTDATA = pathlib.Path(__file__).resolve().parents[1] / "protocol" / "testdata"
