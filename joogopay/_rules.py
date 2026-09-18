@@ -17,6 +17,7 @@ METHOD_EXTRA_FIELDS = {
     "BREB": "breb",
     "CASH": "cash",
     "CASH_APP": "cashApp",
+    "CHIME": "chime",
     "CREDIT_CARD": "creditCard",
     "CVU": "cvu",
     "E_WALLET": "eWallet",
@@ -39,6 +40,7 @@ METHOD_EXTRA_FIELDS = {
     "PAGO46": "pago46",
     "PAGO_FACIL": "pagoFacil",
     "PAPARA": "papara",
+    "PAYPAL": "paypal",
     "PH_DF_BANK": "phDfBank",
     "PH_DF_WALLET": "phDfWallet",
     "PH_GCASH": "phGcash",
@@ -133,13 +135,19 @@ PAYMENT_METHOD_RULES = {
         "required": ['customerName'],
         "byMethod": {},
     },
+    "USD": {
+        "codes": ['CASH_APP'],
+        "required": ['name', 'phone', 'email', 'ipAddress'],
+        "byMethod": {},
+    },
 }
 
 PAYOUT_METHOD_RULES = {
     "ARS": {
         "codes": [],
-        "required": ['accountNo', 'accountType', 'address', 'documentNumber', 'documentType', 'email', 'firstName', 'lastName', 'phone'],
+        "required": ['accountNo', 'accountType', 'documentNumber', 'documentType', 'email', 'firstName', 'lastName', 'phone'],
         "byMethod": {},
+        "optionalNullableStringsByMethod": {'BANK_TRANSFER': ['address']},
     },
     "BDT": {
         "codes": ['BD_BKASH', 'BD_NAGAD'],
@@ -195,5 +203,10 @@ PAYOUT_METHOD_RULES = {
         "codes": [],
         "required": ['accountName', 'accountNo'],
         "byMethod": {'BANK_TRANSFER': ['bankCode', 'bankName']},
+    },
+    "USD": {
+        "codes": ['CASH_APP', 'CHIME', 'PAYPAL'],
+        "required": ['name', 'phone', 'email', 'accountNo', 'firstName', 'lastName', 'dateOfBirth', 'countryOfResidence', 'stateOfResidence', 'cardCity', 'cardStreet', 'cardPostCode'],
+        "byMethod": {},
     },
 }

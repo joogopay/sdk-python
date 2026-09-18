@@ -644,3 +644,83 @@ def test_receipt_trims_order_no(client):
     NEXT_RESPONSE.clear()
     client.get_payout_receipt("  P202608270001 ")
     assert CAPTURED["path"].startswith("/api/v1/payouts/P202608270001/receipt")
+
+
+@pytest.mark.parametrize("account_type", ["CBU", "CVU"])
+def test_ars_payout_optional_nullable_address(client, account_type):
+    extra = {
+        "firstName": "Ana", "lastName": "Perez", "email": "ana@example.com", "phone": "1123456789",
+        "documentType": "DNI", "documentNumber": "30123456",
+        "accountNo": "0000003100012345678901", "accountType": account_type,
+    }
+
+    def request(fields):
+        return {
+            "merchantOrderNo": "ars-address-001", "currency": "ARS", "amount": "1.00",
+            "webhookUrl": "https://merchant.example.com/webhook",
+            "payoutMethod": {"code": "BANK_TRANSFER", "bankTransfer": fields},
+        }
+
+    NEXT_RESPONSE.clear()
+    for address_fields in [{}, {"address": None}, {"address": ""}, {"address": " Av Example 123 "}]:
+        body = request({**extra, **address_fields})
+        expected = json.loads(json.dumps(body))
+        client.create_payout(sdk.CreatePayoutReq(**body))
+        plaintext, _ = p.open_body_envelope(
+            CAPTURED["body"], base64.b64decode(BODY["platformBodyPublicKeyBase64"]),
+            base64.b64decode(BODY["platformBodyPrivateKeyBase64"]),
+        )
+        assert json.loads(plaintext) == expected
+        assert body == expected, "caller input must remain unchanged"
+
+    for address in [1, False, [], {}]:
+        CAPTURED.clear()
+        with pytest.raises(sdk.RequestError, match="extra.address"):
+            client.create_payout(sdk.CreatePayoutReq(**request({**extra, "address": address})))
+        assert CAPTURED == {}, "invalid address must fail before HTTP"
+    for field in extra:
+        missing = dict(extra)
+        del missing[field]
+        for invalid in [missing] + [{**extra, field: empty} for empty in [None, "", "  "]]:
+            CAPTURED.clear()
+            with pytest.raises(sdk.RequestError, match=f"extra.{field}"):
+                client.create_payout(sdk.CreatePayoutReq(**request(invalid)))
+            assert CAPTURED == {}, f"{field} must fail before HTTP"
+
+
+_USD = json.loads((TESTDATA / "methods" / "001-usd-wallets.json").read_text())
+
+
+@pytest.mark.parametrize("wallet_request", [_USD["payment"], *_USD["payouts"]])
+def test_usd_wallet_contract(client, wallet_request):
+    request = wallet_request
+    import copy
+
+    NEXT_RESPONSE.clear()
+    method_field = "paymentMethod" if "paymentMethod" in request else "payoutMethod"
+    method = request[method_field]
+    branch = next(key for key in method if key != "code")
+
+    def create(value):
+        if method_field == "paymentMethod":
+            return client.create_payment(sdk.CreatePaymentReq(**value))
+        return client.create_payout(sdk.CreatePayoutReq(**value))
+
+    create(request)
+    plaintext, _ = p.open_body_envelope(
+        CAPTURED["body"], base64.b64decode(BODY["platformBodyPublicKeyBase64"]),
+        base64.b64decode(BODY["platformBodyPrivateKeyBase64"]),
+    )
+    assert json.loads(plaintext) == request
+    last_body = CAPTURED["body"]
+    for field in method[branch]:
+        for empty in (None, "", "  "):
+            invalid = copy.deepcopy(request)
+            invalid[method_field][branch][field] = empty
+            with pytest.raises(sdk.RequestError):
+                create(invalid)
+            assert CAPTURED["body"] == last_body, f"{field} must fail before HTTP"
+    formats = copy.deepcopy(request)
+    for field in method[branch]:
+        formats[method_field][branch][field] = "format-is-checked-by-gateway"
+    create(formats)

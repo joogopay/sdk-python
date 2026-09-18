@@ -105,16 +105,25 @@ def _validate_method(currency: str, method: dict[str, Any] | None, rules: dict) 
         raise RequestError(f"sdk: method is not available for this currency: {code} for {currency}")
 
     need = list(rule["required"]) + list(rule["byMethod"].get(code, []))
-    if not need:
+    optional_nullable_strings = rule.get("optionalNullableStringsByMethod", {}).get(code, [])
+    if not need and not optional_nullable_strings:
         return
     extra = method.get(present[0]) or {} if present else {}
     if not isinstance(extra, dict):
         raise RequestError(f"sdk: method extra must be an object: {present[0]}")
     for field in need:
+        if field in rule.get("allowEmpty", []):
+            if not isinstance(extra.get(field), str):
+                raise RequestError(f"sdk: extra.{field} must be a string for {currency} {code}")
+            continue
         if field not in extra or _empty(extra[field]):
             raise RequestError(
                 f"sdk: required extra field is empty: extra.{field} for {currency} {code}"
             )
+    for field in optional_nullable_strings:
+        value = extra.get(field)
+        if value is not None and not isinstance(value, str):
+            raise RequestError(f"sdk: extra.{field} must be a string or null for {currency} {code}")
 
 
 def validate_payment_method(currency: str, method: dict[str, Any] | None) -> None:

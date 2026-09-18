@@ -6,7 +6,7 @@ or the sealed box envelope themselves.
 
 ## Protocol
 
-[`protocol/`](protocol/) is the source of truth, shared with the Go / JavaScript /
+[`protocol/`](https://github.com/joogopay/sdk-python/tree/main/protocol/) is the source of truth, shared with the Go / JavaScript /
 PHP / Java SDKs through one set of test vectors:
 
 | Item | Approach |
@@ -97,7 +97,7 @@ Two rules follow:
 
 The SDK validates locally before signing (top-level required fields and formats,
 method shape and required extras); the rules are defined in
-[`protocol/merchant-api.md`](protocol/merchant-api.md#client-side-validation).
+[`protocol/merchant-api.md`](https://github.com/joogopay/sdk-python/blob/main/protocol/merchant-api.md#client-side-validation).
 Format checks (phone length, e-mail, ...) stay with the gateway on purpose so the
 SDK cannot drift from it.
 
@@ -106,8 +106,8 @@ SDK cannot drift from it.
 Queries, idempotent retries and webhook verification are covered by the platform
 documentation at <https://docs.joogopay.com>; its examples map one to one onto this
 SDK. The wire protocol is in
-[`protocol/webhook.md`](protocol/webhook.md) and
-[`protocol/merchant-api.md`](protocol/merchant-api.md). Key points:
+[`protocol/webhook.md`](https://github.com/joogopay/sdk-python/blob/main/protocol/webhook.md) and
+[`protocol/merchant-api.md`](https://github.com/joogopay/sdk-python/blob/main/protocol/merchant-api.md). Key points:
 
 - After a create timeout, query by `merchantOrderNo` first instead of sending a
   new order; a deliberate retry repeats the same call with the same `merchantOrderNo`.
@@ -143,7 +143,7 @@ python -m pip install -e '.[dev]'
 python -m pytest -q
 ```
 
-The tests assert directly against the [`protocol/testdata`](protocol/testdata/)
+The tests assert directly against the [`protocol/testdata`](https://github.com/joogopay/sdk-python/tree/main/protocol/testdata/)
 vectors: `Signature-Input`, the signature base and the signature value are compared
 byte for byte, and body encryption is verified by opening ciphertext produced by
 the reference implementation.
