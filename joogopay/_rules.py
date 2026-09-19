@@ -190,9 +190,9 @@ PAYOUT_METHOD_RULES = {
         "byMethod": {'BANK_TRANSFER': ['accountType', 'cciNo']},
     },
     "PHP": {
-        "codes": ['PH_DF_BANK', 'PH_DF_WALLET'],
-        "required": ['accountName', 'accountNo', 'bankCode', 'email', 'mobile'],
-        "byMethod": {},
+        "codes": ['PH_DF_BANK', 'PH_DF_WALLET', 'PH_GCASH', 'PH_MAYA'],
+        "required": ['accountName', 'accountNo', 'email', 'mobile'],
+        "byMethod": {'PH_DF_BANK': ['bankCode'], 'PH_DF_WALLET': ['bankCode']},
     },
     "PKR": {
         "codes": ['PK_BANK', 'PK_EASYPAISA', 'PK_JAZZCASH'],

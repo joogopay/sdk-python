@@ -724,3 +724,34 @@ def test_usd_wallet_contract(client, wallet_request):
     for field in method[branch]:
         formats[method_field][branch][field] = "format-is-checked-by-gateway"
     create(formats)
+
+
+PH_WALLET_PAYOUTS = [("PH_GCASH", "phGcash"), ("PH_MAYA", "phMaya")]
+
+
+def ph_payout(method):
+    return sdk.CreatePayoutReq(
+        merchantOrderNo="M1", currency="PHP", amount="100.00",
+        payoutMethod=method, webhookUrl="https://m.example.com/w",
+    )
+
+
+def ph_extra():
+    return {"accountNo": "09171234567", "accountName": "Juan",
+            "email": "j@example.com", "mobile": "09171234567"}
+
+
+@pytest.mark.parametrize("code,field", PH_WALLET_PAYOUTS)
+def test_validate_payout_ph_wallets_need_no_bank_code(client, code, field):
+    """One code per wallet works in both directions; the channel derives the wallet."""
+    NEXT_RESPONSE.clear()
+    client.create_payout(ph_payout({"code": code, field: ph_extra()}))
+
+
+@pytest.mark.parametrize("code,field", [("PH_DF_BANK", "phDfBank"), ("PH_DF_WALLET", "phDfWallet")])
+def test_validate_payout_ph_bank_code_still_required(client, code, field):
+    """PH_DF_WALLET is kept for existing integrations; there bankCode names the wallet."""
+    NEXT_RESPONSE.clear()
+    with pytest.raises(sdk.RequestError, match="extra.bankCode"):
+        client.create_payout(ph_payout({"code": code, field: ph_extra()}))
+
