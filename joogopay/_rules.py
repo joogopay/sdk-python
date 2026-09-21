@@ -76,7 +76,7 @@ METHOD_EXTRA_FIELDS = {
 
 PAYMENT_METHOD_RULES = {
     "ARS": {
-        "codes": [],
+        "codes": ['BANK_TRANSFER', 'CVU', 'QRIS'],
         "required": ['documentNumber', 'documentType', 'email', 'firstName', 'lastName'],
         "byMethod": {'CVU': ['phone'], 'QRIS': ['phone']},
     },
@@ -86,17 +86,17 @@ PAYMENT_METHOD_RULES = {
         "byMethod": {},
     },
     "BRL": {
-        "codes": [],
+        "codes": ['PIX'],
         "required": [],
         "byMethod": {},
     },
     "CLP": {
-        "codes": [],
+        "codes": ['KHIPU', 'MACH', 'PAGO46', 'WEBPAY'],
         "required": ['customerEmail', 'customerName', 'documentNumber', 'documentType'],
         "byMethod": {},
     },
     "COP": {
-        "codes": [],
+        "codes": ['BREB', 'NEQUI', 'PSE'],
         "required": [],
         "byMethod": {'BREB': ['customerEmail', 'customerName', 'customerPhone', 'documentNumber', 'documentType']},
     },
@@ -111,7 +111,7 @@ PAYMENT_METHOD_RULES = {
         "byMethod": {},
     },
     "MXN": {
-        "codes": [],
+        "codes": ['CASH', 'OXXO', 'SPEI'],
         "required": [],
         "byMethod": {},
     },
@@ -131,7 +131,7 @@ PAYMENT_METHOD_RULES = {
         "byMethod": {},
     },
     "TRY": {
-        "codes": [],
+        "codes": ['BANK_TRANSFER'],
         "required": ['customerName'],
         "byMethod": {},
     },
@@ -144,7 +144,7 @@ PAYMENT_METHOD_RULES = {
 
 PAYOUT_METHOD_RULES = {
     "ARS": {
-        "codes": [],
+        "codes": ['BANK_TRANSFER'],
         "required": ['accountNo', 'accountType', 'documentNumber', 'documentType', 'email', 'firstName', 'lastName', 'phone'],
         "byMethod": {},
         "optionalNullableStringsByMethod": {'BANK_TRANSFER': ['address']},
@@ -155,22 +155,22 @@ PAYOUT_METHOD_RULES = {
         "byMethod": {},
     },
     "BRL": {
-        "codes": [],
+        "codes": ['PIX'],
         "required": ['key', 'keyType'],
         "byMethod": {},
     },
     "CLP": {
-        "codes": [],
+        "codes": ['BANK_TRANSFER'],
         "required": ['accountName', 'accountNo', 'accountType', 'bankCode', 'customerEmail', 'customerPhone', 'documentNumber', 'documentType'],
         "byMethod": {},
     },
     "COP": {
-        "codes": [],
+        "codes": ['BANK_CARD', 'BANK_TRANSFER', 'BREB', 'TRANSFIYA'],
         "required": ['customerEmail', 'customerName', 'customerPhone', 'documentNumber', 'documentType'],
         "byMethod": {'BANK_CARD': ['accountNo', 'bankName'], 'BANK_TRANSFER': ['accountNo', 'bankName'], 'BREB': ['accountNo']},
     },
     "IDR": {
-        "codes": [],
+        "codes": ['ID_BANK_TRANSFER', 'ID_DANA', 'ID_GOPAY', 'ID_LINKAJA', 'ID_OVO', 'ID_SHOPEEPAY'],
         "required": ['accountName', 'bankCode', 'email', 'mobile'],
         "byMethod": {},
     },
@@ -180,7 +180,7 @@ PAYOUT_METHOD_RULES = {
         "byMethod": {'IN_IFSC': ['account', 'ifsc']},
     },
     "MXN": {
-        "codes": [],
+        "codes": ['BANK_TRANSFER'],
         "required": ['accountName', 'accountNo', 'accountType', 'bankCode', 'bankName'],
         "byMethod": {},
     },
@@ -200,7 +200,7 @@ PAYOUT_METHOD_RULES = {
         "byMethod": {'PK_BANK': ['bankCode']},
     },
     "TRY": {
-        "codes": [],
+        "codes": ['BANK_TRANSFER', 'PAPARA'],
         "required": ['accountName', 'accountNo'],
         "byMethod": {'BANK_TRANSFER': ['bankCode', 'bankName']},
     },
