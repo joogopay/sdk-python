@@ -171,7 +171,7 @@ PAYOUT_METHOD_RULES = {
     },
     "IDR": {
         "codes": ['ID_BANK_TRANSFER', 'ID_DANA', 'ID_GOPAY', 'ID_LINKAJA', 'ID_OVO', 'ID_SHOPEEPAY'],
-        "required": ['accountName', 'bankCode', 'email', 'mobile'],
+        "required": ['accountName', 'accountNo', 'bankCode', 'email', 'mobile'],
         "byMethod": {},
     },
     "INR": {

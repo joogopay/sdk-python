@@ -91,6 +91,14 @@ class Failure(_FromDict):
 
 
 @dataclass
+class PaymentPayer(_FromDict):
+    """Channel-reported payer in authenticated payment queries and payment webhooks."""
+
+    name: str = ""
+    documentNumber: str = ""
+
+
+@dataclass
 class PaymentOrder(_FromDict):
     orderNo: str = ""
     merchantOrderNo: str = ""
@@ -105,11 +113,13 @@ class PaymentOrder(_FromDict):
     failure: Failure | None = None
     createdAt: int = 0
     updatedAt: int = 0
+    payer: PaymentPayer | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "PaymentOrder":
         data = dict(data or {})
         data["action"] = OrderAction.from_dict(data.get("action"))
+        data["payer"] = PaymentPayer.from_dict(data["payer"]) if data.get("payer") else None
         data["failure"] = Failure.from_dict(data["failure"]) if data.get("failure") else None
         return super().from_dict(data)  # type: ignore[return-value]
 
@@ -211,10 +221,12 @@ class PaymentWebhook(_FromDict):
     channelTradeNo: str = ""
     attach: str = ""
     failure: Failure | None = None
+    payer: PaymentPayer | None = None
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "PaymentWebhook":
         data = dict(data or {})
+        data["payer"] = PaymentPayer.from_dict(data["payer"]) if data.get("payer") else None
         data["failure"] = Failure.from_dict(data["failure"]) if data.get("failure") else None
         return super().from_dict(data)  # type: ignore[return-value]
 

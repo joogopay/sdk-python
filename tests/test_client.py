@@ -238,6 +238,23 @@ def test_response_success_vector(client):
     assert order.orderNo == "ORD202605190001"
     assert order.status == sdk.STATUS_SUCCEEDED
     assert order.action.qrCode == "00020-qr"
+    assert isinstance(order.payer, sdk.PaymentPayer)
+    assert order.payer.name == "Maria Silva"
+    assert order.payer.documentNumber == "01234567890"
+
+
+@pytest.mark.parametrize("fields, expected", [
+    ({}, None),
+    ({"payer": None}, None),
+    ({"payer": {}}, None),
+    ({"payer": {"name": "Maria Silva"}}, sdk.PaymentPayer(name="Maria Silva")),
+    ({"payer": {"documentNumber": "01234567890"}}, sdk.PaymentPayer(documentNumber="01234567890")),
+])
+def test_payment_query_optional_payer(client, fields, expected):
+    NEXT_RESPONSE.clear()
+    NEXT_RESPONSE.update(body={"code": 200, "data": {"orderNo": "payment-1", **fields}})
+    for query in (client.query_payment_by_order_no, client.query_payment_by_merchant_order_no):
+        assert query("payment-1").payer == expected
 
 
 def test_response_api_error_vector(client):
@@ -298,7 +315,7 @@ def test_response_vectors_amounts_are_decimal_strings():
                 )
 
 
-def _hook_client(server, now: int = 1787803300):
+def _hook_client(server, now: int = 1787803300, vector=HOOK):
     return sdk.Client(
         base_url=server,
         access_key="mak_live_test",
@@ -306,7 +323,7 @@ def _hook_client(server, now: int = 1787803300):
         platform_body_key_id=BODY["keyId"],
         platform_body_public_key_base64=BODY["platformBodyPublicKeyBase64"],
         platform_webhook_public_keys={
-            HOOK["key"]["platformWebhookKeyId"]: HOOK["key"]["platformWebhookPublicKeyBase64"]
+            vector["key"]["platformWebhookKeyId"]: vector["key"]["platformWebhookPublicKeyBase64"]
         },
         _now=lambda: now,
     )
@@ -321,6 +338,48 @@ def test_parse_payment_webhook(server):
     assert hook.orderType == "PAYMENT"
     assert hook.status == sdk.STATUS_SUCCEEDED
     assert (hook.amount, hook.paidAmount) == ("100.50", "100.50")
+    assert hook.payer is None
+
+
+def test_parse_payment_webhook_payer(server):
+    vector = json.loads((TESTDATA / "webhook" / "002-payment-payer.json").read_text())
+    kwargs = dict(
+        method=vector["input"]["method"], path=vector["input"]["path"],
+        raw_query=vector["input"]["rawQuery"], headers=vector["headers"], body=vector["body"].encode(),
+    )
+    client = _hook_client(server, vector=vector)
+    hook = client.parse_payment_webhook(**kwargs)
+    assert hook.payer == sdk.PaymentPayer(name="Maria Silva", documentNumber="01234567890")
+    assert (hook.amount, hook.paidAmount) == ("100.50", "100.50")
+
+
+@pytest.mark.parametrize("field", ["name", "documentNumber"])
+@pytest.mark.parametrize("refresh_digest", [False, True])
+def test_payment_webhook_rejects_altered_payer(server, field, refresh_digest):
+    vector = json.loads((TESTDATA / "webhook" / "002-payment-payer.json").read_text())
+    payload = json.loads(vector["body"])
+    payload["payer"][field] = "Other Name" if field == "name" else "11234567890"
+    body = json.dumps(payload, separators=(",", ":")).encode()
+    headers = dict(vector["headers"])
+    if refresh_digest:
+        headers["Content-Digest"] = p.content_digest_sha256(body)
+    expected_error = p.InvalidSignatureError if refresh_digest else sdk.WebhookError
+    with pytest.raises(expected_error):
+        _hook_client(server, vector=vector).parse_payment_webhook(
+            method=vector["input"]["method"], path=vector["input"]["path"],
+            raw_query=vector["input"]["rawQuery"], headers=headers, body=body,
+        )
+
+
+@pytest.mark.parametrize("fields,expected", [
+    ({}, None),
+    ({"payer": None}, None),
+    ({"payer": {}}, None),
+    ({"payer": {"name": "Maria Silva"}}, sdk.PaymentPayer(name="Maria Silva")),
+    ({"payer": {"documentNumber": "01234567890"}}, sdk.PaymentPayer(documentNumber="01234567890")),
+])
+def test_payment_webhook_optional_payer(fields, expected):
+    assert sdk.PaymentWebhook.from_dict(fields).payer == expected
 
 
 def test_webhook_rejects_unknown_key_id(server):
@@ -582,7 +641,9 @@ def idr_wallet_payout(method):
 
 
 def idr_wallet_extra(wallet):
-    return {"bankCode": wallet, "accountName": "Budi", "email": "b@example.com", "mobile": "081234567890"}
+    # accountNo is the wallet-registered phone number and receives the funds; mobile is a contact number.
+    return {"bankCode": wallet, "accountNo": "081234567890", "accountName": "Budi",
+            "email": "b@example.com", "mobile": "089999999999"}
 
 
 @pytest.mark.parametrize("code,field,wallet", IDR_WALLET_PAYOUTS)
@@ -596,6 +657,14 @@ def test_validate_payout_idr_wallet_extra_must_match_code(client):
     NEXT_RESPONSE.clear()
     with pytest.raises(sdk.RequestError, match="does not match code"):
         client.create_payout(idr_wallet_payout({"code": "ID_DANA", "idOvo": idr_wallet_extra("OVO")}))
+
+
+def test_validate_payout_idr_wallet_requires_account_no(client):
+    """accountNo is required for wallets as well; mobile never stands in for it."""
+    NEXT_RESPONSE.clear()
+    extra = {**idr_wallet_extra("DANA"), "accountNo": ""}
+    with pytest.raises(sdk.RequestError, match="extra.accountNo"):
+        client.create_payout(idr_wallet_payout({"code": "ID_DANA", "idDana": extra}))
 
 
 TESTDATA = pathlib.Path(__file__).resolve().parents[1] / "protocol" / "testdata"
@@ -754,4 +823,3 @@ def test_validate_payout_ph_bank_code_still_required(client, code, field):
     NEXT_RESPONSE.clear()
     with pytest.raises(sdk.RequestError, match="extra.bankCode"):
         client.create_payout(ph_payout({"code": code, field: ph_extra()}))
-

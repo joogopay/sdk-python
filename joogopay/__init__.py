@@ -24,6 +24,7 @@ from .types import (
     Failure,
     OrderAction,
     PaymentOrder,
+    PaymentPayer,
     PaymentWebhook,
     PayoutOrder,
     PayoutReceipt,
@@ -37,12 +38,12 @@ from .types import (
     USDRate,
 )
 
-__version__ = "0.1.4"
+__version__ = "0.2.0"
 
 __all__ = [
     "Client",
     "CreatePaymentReq", "CreatePayoutReq",
-    "PaymentOrder", "PayoutOrder", "PayoutReceipt", "Balance", "USDRate",
+    "PaymentOrder", "PaymentPayer", "PayoutOrder", "PayoutReceipt", "Balance", "USDRate",
     "PaymentWebhook", "PayoutWebhook", "OrderAction", "Failure",
     "SDKError", "ConfigError", "RequestError", "APIError",
     "ResponseError", "ResponseTooLargeError", "TransportError", "WebhookError",
