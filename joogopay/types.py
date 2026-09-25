@@ -18,10 +18,11 @@ STATUS_SUCCEEDED = "SUCCEEDED"
 STATUS_FAILED = "FAILED"
 STATUS_EXPIRED = "EXPIRED"
 STATUS_CANCELED = "CANCELED"
+STATUS_REFUNDED = "REFUNDED"  # Payouts only, after the refund is credited.
 
 EXTERNAL_STATUSES = frozenset({
     STATUS_PENDING, STATUS_PROCESSING, STATUS_SUCCEEDED,
-    STATUS_FAILED, STATUS_EXPIRED, STATUS_CANCELED,
+    STATUS_FAILED, STATUS_EXPIRED, STATUS_CANCELED, STATUS_REFUNDED,
 })
 
 WEBHOOK_ORDER_TYPE_PAYMENT = "PAYMENT"
@@ -139,6 +140,10 @@ class PayoutOrder(_FromDict):
     createdAt: int = 0
     updatedAt: int = 0
 
+    refundNo: str = ""
+    refundAmount: str = ""
+    refundTime: int = 0
+
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "PayoutOrder":
         data = dict(data or {})
@@ -243,6 +248,10 @@ class PayoutWebhook(_FromDict):
     channelTradeNo: str = ""
     attach: str = ""
     failure: Failure | None = None
+
+    refundNo: str = ""
+    refundAmount: str = ""
+    refundTime: int = 0
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "PayoutWebhook":

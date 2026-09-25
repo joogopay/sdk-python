@@ -30,6 +30,7 @@ from .types import (
     PayoutReceipt,
     PayoutWebhook,
     STATUS_CANCELED,
+    STATUS_REFUNDED,
     STATUS_EXPIRED,
     STATUS_FAILED,
     STATUS_PENDING,
@@ -38,7 +39,7 @@ from .types import (
     USDRate,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Client",
@@ -48,6 +49,6 @@ __all__ = [
     "SDKError", "ConfigError", "RequestError", "APIError",
     "ResponseError", "ResponseTooLargeError", "TransportError", "WebhookError",
     "STATUS_PENDING", "STATUS_PROCESSING", "STATUS_SUCCEEDED",
-    "STATUS_FAILED", "STATUS_EXPIRED", "STATUS_CANCELED", "EXTERNAL_STATUSES",
+    "STATUS_FAILED", "STATUS_EXPIRED", "STATUS_CANCELED", "STATUS_REFUNDED", "EXTERNAL_STATUSES",
     "__version__",
 ]

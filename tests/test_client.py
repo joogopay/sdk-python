@@ -823,3 +823,20 @@ def test_validate_payout_ph_bank_code_still_required(client, code, field):
     NEXT_RESPONSE.clear()
     with pytest.raises(sdk.RequestError, match="extra.bankCode"):
         client.create_payout(ph_payout({"code": code, field: ph_extra()}))
+
+
+def test_payout_refund_query_and_signed_webhook(client, server):
+    response = _load_response("005-payout-refunded.json")
+    NEXT_RESPONSE.clear()
+    NEXT_RESPONSE.update(status=response["httpStatus"], body=response["body"])
+    order = client.query_payout_by_order_no("PO202609240001")
+    vector = json.loads((TESTDATA / "webhook" / "003-payout-refunded.json").read_text())
+    hook = _hook_client(server, vector=vector).parse_payout_webhook(
+        method=vector["input"]["method"], path=vector["input"]["path"],
+        raw_query=vector["input"]["rawQuery"], headers=vector["headers"], body=vector["body"].encode(),
+    )
+    for payload in (order, hook):
+        assert payload.status == sdk.STATUS_REFUNDED
+        assert payload.refundNo == "R202609240001"
+        assert payload.refundAmount == "100.00"
+        assert payload.refundTime == 1790208000000
