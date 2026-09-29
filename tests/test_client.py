@@ -511,6 +511,76 @@ def test_submit_payment_trade_no_requires_both(client, order_no, trade_no):
         client.submit_payment_trade_no(order_no, trade_no)
 
 
+@pytest.mark.parametrize(
+    "locator,expected",
+    [
+        ({"order_no": " P1 "}, {"orderNo": "P1", "tradeNo": "123456789012"}),
+        ({"merchant_order_no": "M1"}, {"merchantOrderNo": "M1", "tradeNo": "123456789012"}),
+    ],
+)
+def test_supplement_payment_is_signed_and_encrypted(client, locator, expected):
+    NEXT_RESPONSE.clear()
+    NEXT_RESPONSE["body"] = {
+        "code": 200,
+        "msg": "OK",
+        "data": {"orderNo": "P1", "merchantOrderNo": "M1", "status": "PROCESSING"},
+    }
+    key = p.new_nonce()
+
+    order = client.supplement_payment(" 123456789012 ", idempotency_key=key, **locator)
+
+    assert isinstance(order, sdk.PaymentOrder)
+    assert order.orderNo == "P1"
+    assert order.status == sdk.STATUS_PROCESSING
+    h = {k.lower(): v for k, v in CAPTURED["headers"].items()}
+    assert CAPTURED["method"] == "POST"
+    assert CAPTURED["path"] == "/api/v1/payments/trade-no"
+    assert h["content-encryption"] == p.CONTENT_ENCRYPTION
+    assert h["idempotency-key"] == key
+    assert h["signature"].startswith("merchant=:")
+    assert h["content-digest"] == p.content_digest_sha256(CAPTURED["body"])
+    plaintext, _ = p.open_body_envelope(
+        CAPTURED["body"],
+        base64.b64decode(BODY["platformBodyPublicKeyBase64"]),
+        base64.b64decode(BODY["platformBodyPrivateKeyBase64"]),
+    )
+    assert json.loads(plaintext) == expected
+
+
+@pytest.mark.parametrize(
+    "trade_no,locator",
+    [
+        (" ", {"order_no": "P1"}),
+        ("", {"order_no": "P1"}),
+        ("UTR", {}),
+        ("UTR", {"order_no": " ", "merchant_order_no": ""}),
+        ("UTR", {"order_no": "P1", "merchant_order_no": "M1"}),
+    ],
+)
+def test_supplement_payment_local_validation(client, trade_no, locator):
+    CAPTURED.clear()
+    with pytest.raises(sdk.RequestError):
+        client.supplement_payment(trade_no, **locator)
+    assert CAPTURED == {}
+
+
+def test_supplement_payment_channel_refusal_is_api_error(client):
+    NEXT_RESPONSE.clear()
+    NEXT_RESPONSE.update(
+        status=422,
+        body={"code": 422, "msg": "CHANNEL_ERROR",
+              "data": {"message": "reference not accepted"}, "traceId": "t1"},
+    )
+
+    with pytest.raises(sdk.APIError) as info:
+        client.supplement_payment("UTR", order_no="P1")
+
+    assert info.value.http_status == 422
+    assert info.value.code == 422
+    assert info.value.msg == "CHANNEL_ERROR"
+    assert info.value.message == "reference not accepted"
+
+
 def test_add_payment_extra_info_omits_optional_fields(client):
     NEXT_RESPONSE.clear()
     NEXT_RESPONSE["body"] = {

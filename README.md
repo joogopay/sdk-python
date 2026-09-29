@@ -116,6 +116,25 @@ SDK. The wire protocol is in
   the digest, event id, time window and Ed25519 signature. Return 2xx once processed
   and deduplicate by `eventId`.
 
+### Supplementing a payment with the payer's transfer reference
+
+When a payment stays `PROCESSING` and the payer has a transfer reference (for example
+a 12-digit UPI UTR), submit it with `supplement_payment` so the platform can have the
+channel match the transfer. Identify the order by exactly one of `order_no` or
+`merchant_order_no`. The request is signed and encrypted like `create_payment` and
+returns a `PaymentOrder`.
+
+```python
+order = client.supplement_payment("123456789012", order_no="P20260101001")
+```
+
+Returning only means the channel accepted the reference; the final status still
+arrives by webhook or query. The reference format is validated by the platform, not
+the SDK. `APIError` `msg` values to expect: `INVALID_FIELD` (bad or missing
+`tradeNo`), `ORDER_NOT_FOUND`, `IDEMPOTENCY_CONFLICT` (the order is no longer
+`PROCESSING`), `UNSUPPORTED_METHOD`, and `CHANNEL_ERROR` (the channel did not accept
+the reference; the order stays `PROCESSING`).
+
 ## Amounts
 
 Amounts, fees and rates in requests, responses, webhooks, balances, rates and

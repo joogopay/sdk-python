@@ -183,6 +183,34 @@ class Client:
         data = self._write("/api/v1/payouts", body, idempotency_key)
         return t.PayoutOrder.from_dict(data)
 
+    def supplement_payment(
+        self,
+        trade_no: str,
+        *,
+        order_no: str | None = None,
+        merchant_order_no: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> t.PaymentOrder:
+        """Submit the payer's transfer reference (for example an India UPI UTR)
+        for a payment order that is still PROCESSING, so the platform can have
+        the channel match it. Identify the order by exactly one of order_no or
+        merchant_order_no.
+
+        Returning only means the channel accepted the reference; the final status
+        still arrives by webhook or query. The reference format is validated by
+        the platform per currency, not here.
+        """
+        trade = (trade_no or "").strip()
+        if not trade:
+            raise RequestError("sdk: required field is empty: tradeNo")
+        no, merchant_no = (order_no or "").strip(), (merchant_order_no or "").strip()
+        if bool(no) == bool(merchant_no):
+            raise RequestError("sdk: exactly one of orderNo or merchantOrderNo is required")
+        body = {"orderNo": no} if no else {"merchantOrderNo": merchant_no}
+        body["tradeNo"] = trade
+        data = self._write("/api/v1/payments/trade-no", body, idempotency_key)
+        return t.PaymentOrder.from_dict(data)
+
     def query_payment_by_order_no(self, order_no: str) -> t.PaymentOrder:
         return t.PaymentOrder.from_dict(self._read("/api/v1/payments", {"orderNo": order_no}))
 
